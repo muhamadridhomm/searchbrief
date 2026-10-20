@@ -1,0 +1,12 @@
+{
+  "name": "searchbrief-planning",
+  "private": true,
+  "description": "Firebase emulator tooling for the SearchBrief local-first project",
+  "scripts": {
+    "emulators": "firebase emulators:start --project demo-searchbrief",
+    "emulators:exec": "firebase emulators:exec --project demo-searchbrief"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.34.0"
+  }
+}
