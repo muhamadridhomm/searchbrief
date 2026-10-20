@@ -27,19 +27,21 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 403)
         popen.assert_not_called()
 
-    def test_ollama_start_uses_the_fixed_project_launcher(self):
-        original_process = main._OLLAMA_PROCESS
-        main._OLLAMA_PROCESS = None
-        try:
-            with patch.object(main, "health", return_value={"ollama_available": False}), patch.object(main.subprocess, "Popen") as popen:
-                popen.return_value.poll.return_value = None
-                response = start_local_ollama(SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={}))
-            self.assertEqual(response["status"], "starting")
-            self.assertEqual(popen.call_args.args[0], [str(main.OLLAMA_START_SCRIPT)])
-            self.assertEqual(popen.call_args.kwargs["cwd"], str(main.PROJECT_ROOT))
-            self.assertTrue(popen.call_args.kwargs["start_new_session"])
-        finally:
-            main._OLLAMA_PROCESS = original_process
+    def test_ollama_start_reports_missing_bundled_runtime(self):
+        request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={})
+        with patch.object(main, "health", return_value={"ollama_available": False}), \
+             patch.object(main, "OLLAMA_START_SCRIPT") as launcher, \
+             patch.object(main, "OLLAMA_BINARY") as binary, \
+             patch.object(main, "OLLAMA_MODEL_MANIFEST") as manifest, \
+             patch.object(main.subprocess, "Popen") as popen:
+            launcher.is_file.return_value = False
+            binary.is_file.return_value = False
+            manifest.is_file.return_value = False
+            with self.assertRaises(HTTPException) as raised:
+                start_local_ollama(request)
+        self.assertEqual(raised.exception.status_code, 503)
+        self.assertIn("Follow the Ollama setup guide", raised.exception.detail)
+        popen.assert_not_called()
 
     def test_revision_request_accepts_bounded_draft_notes_and_claim_feedback(self):
         payload = self.payload()
